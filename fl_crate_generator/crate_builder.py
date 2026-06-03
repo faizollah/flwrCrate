@@ -1,24 +1,39 @@
 """Build a real RO-Crate from the captured run metadata.
 
 Models the federated learning run as a Process Run Crate-style CreateAction:
-the run links to its software via instrument (Flower + the ML framework), to its
-configuration inputs via object (PropertyValues), and to its outputs via result
-(the final model file and the per-round metrics log file). Final metrics are
-attached to the output model as additionalProperty PropertyValues, using the
-metric->URI mapping where available.
+the run links to its software via ``instrument`` (Flower + the ML framework(s) +
+the aggregation strategy), to its configuration inputs via ``object``
+(PropertyValues), and to its outputs via ``result`` (the final model file and
+the per-round / federation log file). Final metrics are attached to the output
+model (or the action, if there is no model) as ``additionalProperty``
+PropertyValues, using the metric->URI mapping where available.
+
+Changes vs v0.2:
+  * #1 The root Dataset now ``mentions`` the CreateAction, so the run is
+        discoverable from the root instead of being an orphan entity.
+  * #2 The aggregation strategy is emitted as a SoftwareApplication with its
+        hyperparameters as ``additionalProperty`` PropertyValues, and linked
+        from the action's ``instrument`` (previously captured but dropped).
+  * #4 All declared software dependencies are emitted (see framework.py), not
+        just an allow-list.
+  * #5 ``license``, ``author`` and ``agent`` scaffolding: a Person entity for
+        the author/agent, a root ``license``, and ``agent`` on the action.
 
 The exact property names mandated by the Federated Learning RO-Crate profile
-v0.1 may differ; conformsTo points at the profile and these choices follow the
-Process Run Crate conventions the profile is built on. Reconcile with Eli's
-profile before release.
+v0.1 may still differ; ``conformsTo`` points at the profile and these choices
+follow the Process Run Crate conventions the profile is built on. Reconcile with
+Eli's profile before release.
 """
 
+import logging
 from pathlib import Path
 
 from rocrate.rocrate import ROCrate
 from rocrate.model.contextentity import ContextEntity
 
 from .metrics import metric_to_property_value
+
+logger = logging.getLogger("fl_crate_generator")
 
 FL_PROFILE = (
     "https://esciencelab.org.uk/federated-learning-ro-crate-profile/"
@@ -32,8 +47,29 @@ def _slug(text) -> str:
     return "".join(c if c.isalnum() else "-" for c in str(text)).strip("-").lower() or "x"
 
 
-def build_crate(captured: dict, crate_dir, metrics_log_path=None,
-                model_path=None, uri_map=None) -> Path:
+def _person(crate, spec, fallback_id):
+    """Add a Person entity from a name string or a dict.
+
+    ``spec`` may be a plain name ("Ali Faizollah") or a dict with optional keys
+    ``name``, ``id``/``orcid`` and ``affiliation``. Returns the added entity.
+    """
+    if isinstance(spec, dict):
+        name = spec.get("name")
+        pid = spec.get("id") or spec.get("orcid") or fallback_id
+        props = {"@type": "Person"}
+        if name:
+            props["name"] = name
+        if spec.get("affiliation"):
+            props["affiliation"] = spec["affiliation"]
+    else:
+        name = str(spec)
+        pid = fallback_id
+        props = {"@type": "Person", "name": name}
+    return crate.add(ContextEntity(crate, pid, properties=props))
+
+
+def build_crate(captured: dict, crate_dir, metrics_log_path=None, model_path=None,
+                uri_map=None, author=None, license=None, agent=None) -> Path:
     """Assemble and write an RO-Crate. Returns the crate directory path."""
     uri_map = uri_map or {}
     crate_dir = Path(crate_dir)
@@ -52,7 +88,39 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None,
     }))
     crate.root_dataset["conformsTo"] = {"@id": profile.id}
 
-    # --- Software (instruments): Flower + ML framework, with versions (Stian) ---
+    # --- #5 license / author / agent scaffolding -------------------------------
+    if license:
+        if str(license).startswith("http"):
+            lic = crate.add(ContextEntity(crate, str(license), properties={
+                "@type": "CreativeWork", "name": str(license),
+            }))
+            crate.root_dataset["license"] = {"@id": lic.id}
+        else:
+            crate.root_dataset["license"] = str(license)
+    else:
+        logger.warning(
+            "No license set for the RO-Crate. Pass license=... (e.g. an SPDX URL "
+            "such as 'https://spdx.org/licenses/MIT.html') to satisfy RO-Crate "
+            "completeness checks."
+        )
+
+    author_ref = None
+    if author:
+        author_ref = _person(crate, author, "#author")
+        crate.root_dataset["author"] = {"@id": author_ref.id}
+    else:
+        logger.warning(
+            "No author set for the RO-Crate. Pass author='Your Name' (or a dict "
+            "with name/orcid/affiliation) for provenance completeness."
+        )
+
+    agent_ref = None
+    if agent:
+        agent_ref = _person(crate, agent, "#agent")
+    elif author_ref is not None:
+        agent_ref = author_ref  # the author ran it, unless told otherwise
+
+    # --- Software (instruments): Flower + framework(s), with versions (Stian) ---
     instruments = []
     flwr_version = (captured.get("flower") or {}).get("version")
     flower_props = {"@type": "SoftwareApplication", "name": "Flower", "url": FLOWER_HOMEPAGE}
@@ -72,7 +140,27 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None,
         ent = crate.add(ContextEntity(crate, f"#framework-{_slug(fw['package'])}", properties=props))
         instruments.append({"@id": ent.id})
 
-    # --- Outputs (results): model file + per-round metrics log file ---
+    # --- #2 Aggregation strategy as a SoftwareApplication with hyperparameters ---
+    strat = captured.get("strategy", {}) or {}
+    if strat.get("class_name"):
+        strat_props = {
+            "@type": "SoftwareApplication",
+            "name": strat["class_name"],
+            "description": f"Federated aggregation strategy ({strat.get('module')}).",
+        }
+        hp_refs = []
+        for k, v in (strat.get("attributes") or {}).items():
+            pid = f"#strategy-param-{_slug(k)}"
+            crate.add(ContextEntity(crate, pid, properties={
+                "@type": "PropertyValue", "name": k, "value": v,
+            }))
+            hp_refs.append({"@id": pid})
+        if hp_refs:
+            strat_props["additionalProperty"] = hp_refs
+        strategy = crate.add(ContextEntity(crate, "#fl-strategy", properties=strat_props))
+        instruments.append({"@id": strategy.id})
+
+    # --- Outputs (results): model file + per-round / federation log file ---
     results = []
     model_entity = None
     if model_path and Path(model_path).exists():
@@ -86,8 +174,12 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None,
     if metrics_log_path and Path(metrics_log_path).exists():
         log_entity = crate.add_file(str(metrics_log_path), Path(metrics_log_path).name, properties={
             "@type": "File",
-            "name": "Per-round metrics log",
-            "description": "Per-round training and evaluation metrics for the whole run.",
+            "name": "Per-round metrics and federation log",
+            "description": (
+                "Per-round training and evaluation metrics, plus federation "
+                "details (participant/supernode counts and configuration) for "
+                "the whole run."
+            ),
             "encodingFormat": "application/json",
         })
         results.append({"@id": log_entity.id})
@@ -112,7 +204,6 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None,
 
     # --- The CreateAction: the FL run itself ---
     timing = captured.get("run_timing", {}) or {}
-    strat = captured.get("strategy", {}) or {}
     action_props = {"@type": "CreateAction", "name": "Federated learning training run", "instrument": instruments}
     if timing.get("start_time"):
         action_props["startTime"] = timing["start_time"]
@@ -122,6 +213,8 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None,
         action_props["object"] = config_refs
     if results:
         action_props["result"] = results
+    if agent_ref is not None:
+        action_props["agent"] = {"@id": agent_ref.id}
     if strat:
         action_props["description"] = (
             f"Run using strategy {strat.get('class_name')} ({strat.get('module')}), "
@@ -134,6 +227,9 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None,
         action_props["actionStatus"] = {"@id": SCHEMA + "CompletedActionStatus"}
 
     action = crate.add(ContextEntity(crate, "#fl-run", properties=action_props))
+
+    # --- #1 Link the action from the root so it is discoverable ---
+    crate.root_dataset["mentions"] = [{"@id": action.id}]
 
     # Final metrics attach to the output model, else to the action (Eli's choice).
     if metric_refs:

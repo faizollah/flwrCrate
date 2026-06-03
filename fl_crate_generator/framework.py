@@ -1,9 +1,15 @@
-"""Framework detection: capture the ML framework and its version.
+"""Framework / software-environment detection.
 
-Stian asked that the framework (PyTorch, scikit-learn, etc.) and its version be
-recorded. We read the declared dependency from the app's pyproject.toml (the
-version spec the user pinned) and also resolve the actually-installed version
-via importlib.metadata, which is the precise version that ran.
+Captures the software a Flower app declares in its ``pyproject.toml``, each with
+the version spec the user pinned (from ``[project].dependencies``) and the
+actually-installed version (``importlib.metadata``).
+
+Why this differs from v0.2: the previous version used a fixed allow-list and
+*silently dropped* any dependency that was not on it -- so a weather/soil project
+built on lightgbm, statsmodels, keras, etc. recorded no framework at all. To work
+for "all kinds of projects", this version records *every* declared dependency
+except a small infrastructure deny-list, and marks the ones it recognises as ML
+frameworks (nice display name + homepage). Nothing is dropped silently.
 """
 
 import logging
@@ -17,17 +23,34 @@ except ModuleNotFoundError:  # pragma: no cover
 
 logger = logging.getLogger("fl_crate_generator")
 
-# Distribution name -> (display name, homepage). Extend as needed.
+# Recognised ML / data-science frameworks: package -> (display name, homepage).
 KNOWN_FRAMEWORKS = {
     "torch": ("PyTorch", "https://pytorch.org/"),
     "torchvision": ("TorchVision", "https://pytorch.org/vision/"),
+    "pytorch-lightning": ("PyTorch Lightning", "https://lightning.ai/"),
+    "lightning": ("Lightning", "https://lightning.ai/"),
     "scikit-learn": ("scikit-learn", "https://scikit-learn.org/"),
     "sklearn": ("scikit-learn", "https://scikit-learn.org/"),
     "tensorflow": ("TensorFlow", "https://www.tensorflow.org/"),
+    "keras": ("Keras", "https://keras.io/"),
     "jax": ("JAX", "https://jax.readthedocs.io/"),
+    "flax": ("Flax", "https://flax.readthedocs.io/"),
     "mlx": ("MLX", "https://ml-explore.github.io/mlx/"),
     "xgboost": ("XGBoost", "https://xgboost.readthedocs.io/"),
+    "lightgbm": ("LightGBM", "https://lightgbm.readthedocs.io/"),
+    "catboost": ("CatBoost", "https://catboost.ai/"),
+    "statsmodels": ("statsmodels", "https://www.statsmodels.org/"),
+    "prophet": ("Prophet", "https://facebook.github.io/prophet/"),
     "transformers": ("Transformers", "https://huggingface.co/docs/transformers"),
+    "datasets": ("Hugging Face Datasets", "https://huggingface.co/docs/datasets"),
+}
+
+# Infrastructure / glue packages we never report as "software used" for the run.
+# (Flower itself is recorded separately, as the FL framework.)
+INFRA_DENYLIST = {
+    "flwr", "flwr-datasets", "flwr-nightly", "ray",
+    "fl-crate-generator", "rocrate", "tomli",
+    "hatchling", "setuptools", "wheel", "pip", "build",
 }
 
 
@@ -38,7 +61,7 @@ def _split_requirement(dep: str):
         return dep.strip().lower(), ""
     name = m.group(1).lower()
     spec = dep[m.end():].strip()
-    # Drop extras and environment markers for a clean spec, e.g. "flwr[simulation]>=1.28" 
+    # Drop extras and environment markers for a clean spec, e.g. "flwr[simulation]>=1.28".
     spec = spec.split(";")[0].strip()
     if spec.startswith("["):
         spec = spec.split("]", 1)[-1].strip()
@@ -53,26 +76,39 @@ def _installed_version(dist_name: str):
 
 
 def detect_frameworks(pyproject_path: str = "pyproject.toml") -> list:
-    """Return ML frameworks declared in pyproject.toml with declared + installed versions."""
+    """Return the declared software dependencies (minus infrastructure) with
+    declared + installed versions. Recognised ML frameworks are flagged via
+    ``known_framework`` and given a friendly name + homepage."""
     try:
         with open(pyproject_path, "rb") as f:
             pyproject = tomllib.load(f)
     except FileNotFoundError:
-        logger.warning("pyproject.toml not found at %s; no framework captured.", pyproject_path)
+        logger.warning("pyproject.toml not found at %s; no software captured.", pyproject_path)
         return []
 
     deps = pyproject.get("project", {}).get("dependencies", []) or []
     found, seen = [], set()
     for dep in deps:
         name, spec = _split_requirement(dep)
-        if name in KNOWN_FRAMEWORKS and name not in seen:
-            seen.add(name)
+        if not name or name in seen or name in INFRA_DENYLIST:
+            continue
+        seen.add(name)
+        known = name in KNOWN_FRAMEWORKS
+        if known:
             display, homepage = KNOWN_FRAMEWORKS[name]
-            found.append({
-                "package": name,
-                "name": display,
-                "homepage": homepage,
-                "declared": spec or None,                 # version spec from pyproject.toml
-                "installed_version": _installed_version(name),  # version that actually ran
-            })
+        else:
+            display, homepage = name, None
+            logger.info(
+                "Recording dependency %r as software used (not in the known-"
+                "frameworks map; add it to KNOWN_FRAMEWORKS for a friendly "
+                "name + homepage).", name,
+            )
+        found.append({
+            "package": name,
+            "name": display,
+            "homepage": homepage,
+            "declared": spec or None,                  # version spec from pyproject.toml
+            "installed_version": _installed_version(name),  # version that actually ran
+            "known_framework": known,
+        })
     return found

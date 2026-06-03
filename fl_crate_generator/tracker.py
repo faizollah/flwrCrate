@@ -4,7 +4,12 @@ Usage (inside server_app.py):
 
     from fl_crate_generator import FLCrateTracker
 
-    with FLCrateTracker(context, strategy, output_dir="fl_crate_out") as tracker:
+    with FLCrateTracker(
+        context, strategy,
+        output_dir="fl_crate_out",
+        author="Ali Faizollah",                       # provenance (#5)
+        license="https://spdx.org/licenses/MIT.html", # RO-Crate completeness (#5)
+    ) as tracker:
         result = strategy.start(
             grid=grid,
             initial_arrays=arrays,
@@ -23,16 +28,25 @@ from datetime import datetime, timezone
 from importlib import metadata
 from pathlib import Path
 
+try:
+    import tomllib  # Python 3.11+
+except ModuleNotFoundError:  # pragma: no cover
+    import tomli as tomllib
+
 from .metrics import metricrecord_to_dict, load_metric_uri_map
 from .framework import detect_frameworks
 from .crate_builder import build_crate
 
 logger = logging.getLogger("fl_crate_generator")
 
+# run_config keys that describe the federation rather than the model/training.
+_FEDERATION_HINTS = ("client", "node", "supernode", "fraction", "min-", "partition")
+
 
 class FLCrateTracker:
     def __init__(self, context, strategy, output_dir=None,
-                 pyproject_path="pyproject.toml", app_name=None):
+                 pyproject_path="pyproject.toml", app_name=None,
+                 author=None, license=None, agent=None):
         self.output_dir = Path(output_dir) if output_dir else (Path.cwd() / "fl_crate_out")
         self.output_dir.mkdir(parents=True, exist_ok=True)
         self.pyproject_path = pyproject_path
@@ -42,6 +56,11 @@ class FLCrateTracker:
         self.model_path = None
         self._built = False
 
+        # provenance (#5)
+        self.author = author
+        self.license = license
+        self.agent = agent
+
         self._per_round = {}  # round (str) -> {section: {...}, captured_at: ...}
 
         try:
@@ -49,10 +68,16 @@ class FLCrateTracker:
         except metadata.PackageNotFoundError:
             flwr_version = None
 
+        run_config = dict(context.run_config)
+        # #3 federation summary: what we can know about the participants, written
+        # into the separate log file (per-client metrics are not exposed by Flower).
+        self._federation = self._federation_summary(run_config)
+
         self._capture = {
             "app_name": app_name,
             "run_timing": {"start_time": datetime.now(timezone.utc).isoformat(), "end_time": None},
-            "environment_config": dict(context.run_config),
+            "environment_config": run_config,
+            "federation": self._federation,
             "flower": {"version": flwr_version},
             "frameworks": detect_frameworks(self.pyproject_path),
             "strategy": {
@@ -64,8 +89,35 @@ class FLCrateTracker:
             "metrics_log_file": self.metrics_log_path.name,
         }
         self._save_capture()
+        self._save_metrics_log()  # write the log up-front so federation info exists
 
     # ---- capture helpers -------------------------------------------------
+
+    def _federation_summary(self, run_config: dict) -> dict:
+        """Collect federation/participant details from run_config and the
+        pyproject federation section (e.g. num-supernodes for simulations)."""
+        summary = {k: v for k, v in run_config.items()
+                   if any(h in k.lower() for h in _FEDERATION_HINTS)}
+        try:
+            with open(self.pyproject_path, "rb") as f:
+                pyproject = tomllib.load(f)
+            feds = pyproject.get("tool", {}).get("flwr", {}).get("federations", {})
+            default = feds.get("default")
+            # The federations table maps name -> {options = {...}}; pull the
+            # default federation's options (num-supernodes etc.) when present.
+            for fed_name, fed in feds.items():
+                if fed_name == "default" or not isinstance(fed, dict):
+                    continue
+                if default and fed_name != default:
+                    continue
+                opts = fed.get("options", {}) or {}
+                if "num-supernodes" in opts:
+                    summary["num_supernodes"] = opts["num-supernodes"]
+                if opts:
+                    summary.setdefault("federation_options", {})[fed_name] = opts
+        except (FileNotFoundError, KeyError, AttributeError):
+            pass
+        return summary
 
     @staticmethod
     def _strategy_attrs(strategy) -> dict:
@@ -88,8 +140,13 @@ class FLCrateTracker:
         tmp.replace(self.capture_path)
 
     def _save_metrics_log(self):
+        payload = {
+            "federation": self._federation,
+            "run_config": self._capture["environment_config"],
+            "per_round": self._per_round,
+        }
         tmp = self.metrics_log_path.with_suffix(".tmp")
-        tmp.write_text(json.dumps({"per_round": self._per_round}, indent=2))
+        tmp.write_text(json.dumps(payload, indent=2, default=str))
         tmp.replace(self.metrics_log_path)
 
     def _final_round_metrics(self) -> dict:
@@ -156,6 +213,9 @@ class FLCrateTracker:
             metrics_log_path=self.metrics_log_path,
             model_path=self.model_path,
             uri_map=uri_map,
+            author=self.author,
+            license=self.license,
+            agent=self.agent,
         )
         self._built = True
         logger.info("RO-Crate written to %s", self.crate_dir)

@@ -3,4 +3,4 @@
 from .tracker import FLCrateTracker
 
 __all__ = ["FLCrateTracker"]
-__version__ = "0.2.0"
+__version__ = "0.3.0"
