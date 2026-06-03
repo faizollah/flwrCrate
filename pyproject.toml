@@ -1,0 +1,17 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "fl-crate-generator"
+version = "0.2.0"
+description = "Capture a Flower federated learning run and emit an RO-Crate"
+requires-python = ">=3.9"
+dependencies = [
+    "flwr>=1.29.0",
+    "rocrate>=0.13",
+    "tomli>=2.0; python_version < '3.11'",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["fl_crate_generator"]
