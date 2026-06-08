@@ -3,13 +3,6 @@
 Captures the software a Flower app declares in its ``pyproject.toml``, each with
 the version spec the user pinned (from ``[project].dependencies``) and the
 actually-installed version (``importlib.metadata``).
-
-Why this differs from v0.2: the previous version used a fixed allow-list and
-*silently dropped* any dependency that was not on it -- so a weather/soil project
-built on lightgbm, statsmodels, keras, etc. recorded no framework at all. To work
-for "all kinds of projects", this version records *every* declared dependency
-except a small infrastructure deny-list, and marks the ones it recognises as ML
-frameworks (nice display name + homepage). Nothing is dropped silently.
 """
 
 import logging
@@ -46,7 +39,7 @@ KNOWN_FRAMEWORKS = {
 }
 
 # Infrastructure / glue packages we never report as "software used" for the run.
-# (Flower itself is recorded separately, as the FL framework.)
+# (Flower itself is recorded separately, as the FL framework in tracker.py.)
 INFRA_DENYLIST = {
     "flwr", "flwr-datasets", "flwr-nightly", "ray",
     "fl-crate-generator", "rocrate", "tomli",

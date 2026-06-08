@@ -6,24 +6,7 @@ the aggregation strategy), to its configuration inputs via ``object``
 (PropertyValues), and to its outputs via ``result`` (the final model file and
 the per-round / federation log file). Final metrics are attached to the output
 model (or the action, if there is no model) as ``additionalProperty``
-PropertyValues, using the metric->URI mapping where available.
-
-Changes vs v0.2:
-  * #1 The root Dataset now ``mentions`` the CreateAction, so the run is
-        discoverable from the root instead of being an orphan entity.
-  * #2 The aggregation strategy is emitted as a SoftwareApplication with its
-        hyperparameters as ``additionalProperty`` PropertyValues, and linked
-        from the action's ``instrument`` (previously captured but dropped).
-  * #4 All declared software dependencies are emitted (see framework.py), not
-        just an allow-list.
-  * #5 ``license``, ``author`` and ``agent`` scaffolding: a Person entity for
-        the author/agent, a root ``license``, and ``agent`` on the action.
-
-The exact property names mandated by the Federated Learning RO-Crate profile
-v0.1 may still differ; ``conformsTo`` points at the profile and these choices
-follow the Process Run Crate conventions the profile is built on. Reconcile with
-Eli's profile before release.
-"""
+PropertyValues, using the metric->URI mapping where available. """
 
 import logging
 from pathlib import Path
@@ -50,7 +33,7 @@ def _slug(text) -> str:
 def _person(crate, spec, fallback_id):
     """Add a Person entity from a name string or a dict.
 
-    ``spec`` may be a plain name ("Ali Faizollah") or a dict with optional keys
+    ``spec`` may be a plain name ("Ali") or a dict with optional keys
     ``name``, ``id``/``orcid`` and ``affiliation``. Returns the added entity.
     """
     if isinstance(spec, dict):
@@ -120,7 +103,7 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None, model_path=Non
     elif author_ref is not None:
         agent_ref = author_ref  # the author ran it, unless told otherwise
 
-    # --- Software (instruments): Flower + framework(s), with versions (Stian) ---
+    # --- Software (instruments): Flower + framework(s), with versions ---
     instruments = []
     flwr_version = (captured.get("flower") or {}).get("version")
     flower_props = {"@type": "SoftwareApplication", "name": "Flower", "url": FLOWER_HOMEPAGE}
@@ -184,7 +167,7 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None, model_path=Non
         })
         results.append({"@id": log_entity.id})
 
-    # --- Final metrics as PropertyValues (Eli task 2: URI mapping) ---
+    # --- Final metrics as PropertyValues ---
     final = captured.get("final_metrics", {}) or {}
     final_metrics = final.get("metrics", {}) if isinstance(final, dict) else {}
     metric_refs = []
@@ -231,7 +214,7 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None, model_path=Non
     # --- #1 Link the action from the root so it is discoverable ---
     crate.root_dataset["mentions"] = [{"@id": action.id}]
 
-    # Final metrics attach to the output model, else to the action (Eli's choice).
+    # Final metrics attach to the output model, else to the action.
     if metric_refs:
         host = model_entity if model_entity is not None else action
         host["additionalProperty"] = metric_refs

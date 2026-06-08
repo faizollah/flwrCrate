@@ -7,8 +7,8 @@ Usage (inside server_app.py):
     with FLCrateTracker(
         context, strategy,
         output_dir="fl_crate_out",
-        author="Ali Faizollah",                       # provenance (#5)
-        license="https://spdx.org/licenses/MIT.html", # RO-Crate completeness (#5)
+        author="Ali",                       
+        license="https://spdx.org/licenses/MIT.html",
     ) as tracker:
         result = strategy.start(
             grid=grid,
@@ -56,7 +56,6 @@ class FLCrateTracker:
         self.model_path = None
         self._built = False
 
-        # provenance (#5)
         self.author = author
         self.license = license
         self.agent = agent
@@ -69,7 +68,7 @@ class FLCrateTracker:
             flwr_version = None
 
         run_config = dict(context.run_config)
-        # #3 federation summary: what we can know about the participants, written
+        # What we can know about the participants, written
         # into the separate log file (per-client metrics are not exposed by Flower).
         self._federation = self._federation_summary(run_config)
 
@@ -162,7 +161,6 @@ class FLCrateTracker:
 
     def wrap_evaluate(self, user_evaluate_fn):
         """Intercept the server-side evaluate fn to capture per-round metrics.
-
         Tolerates None (e.g. scikit-learn apps without a global evaluate fn).
         """
         if user_evaluate_fn is None:
@@ -235,4 +233,4 @@ class FLCrateTracker:
             self.build()
         except Exception as build_err:  # never mask the original error
             logger.error("Failed to write RO-Crate: %r", build_err)
-        return False  # do not suppress exceptions
+        return False

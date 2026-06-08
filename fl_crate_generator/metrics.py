@@ -1,9 +1,8 @@
 """Metric handling: MetricRecord serialisation and metric->PropertyValue mapping.
 
-This implements Eli's "generalisation" point: metric names come straight from
-the user's training code, and a per-metric URI mapping (declared in pyproject.toml
-under [tool.fedacrate.metric-uris]) is used as the PropertyValue propertyID when
-available; otherwise a plain PropertyValue is emitted and a warning is raised.
+Metric names come straight from the user's training code, and a per-metric URI mapping 
+(declared in pyproject.toml under [tool.fedacrate.metric-uris]) is used as the PropertyValue 
+propertyID when available; otherwise a plain PropertyValue is emitted and a warning is raised.
 """
 
 import logging
@@ -17,11 +16,7 @@ logger = logging.getLogger("fl_crate_generator")
 
 
 def metricrecord_to_dict(mr) -> dict:
-    """Convert a Flower MetricRecord (or plain mapping) to a JSON-friendly dict.
-
-    Replaces the earlier repr() stringification: dict(mr) gives the real
-    key/value pairs, and .tolist() unwraps any array-valued metrics.
-    """
+    """Convert a Flower MetricRecord (or plain mapping) to a JSON-friendly dict."""
     if mr is None:
         return {}
     try:
