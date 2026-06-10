@@ -2,7 +2,7 @@
 
 Usage (inside server_app.py):
 
-    from fl_crate_generator import FLCrateTracker
+    from flwrcrate import FLCrateTracker
 
     with FLCrateTracker(
         context, strategy,
@@ -37,7 +37,7 @@ from .metrics import metricrecord_to_dict, load_metric_uri_map
 from .framework import detect_frameworks
 from .crate_builder import build_crate
 
-logger = logging.getLogger("fl_crate_generator")
+logger = logging.getLogger("flwrcrate")
 
 # run_config keys that describe the federation rather than the model/training.
 _FEDERATION_HINTS = ("client", "node", "supernode", "fraction", "min-", "partition")

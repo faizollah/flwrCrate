@@ -1,7 +1,7 @@
 """Metric handling: MetricRecord serialisation and metric->PropertyValue mapping.
 
-Metric names come straight from the user's training code, and a per-metric URI mapping 
-(declared in pyproject.toml under [tool.fedacrate.metric-uris]) is used as the PropertyValue 
+Metric names come straight from the user's training code, and a per-metric URI mapping
+(declared in pyproject.toml under [tool.flwrcrate.metric-uris]) is used as the PropertyValue
 propertyID when available; otherwise a plain PropertyValue is emitted and a warning is raised.
 """
 
@@ -12,7 +12,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib
 
-logger = logging.getLogger("fl_crate_generator")
+logger = logging.getLogger("flwrcrate")
 
 
 def metricrecord_to_dict(mr) -> dict:
@@ -27,13 +27,19 @@ def metricrecord_to_dict(mr) -> dict:
 
 
 def load_metric_uri_map(pyproject_path: str = "pyproject.toml") -> dict:
-    """Read the metric->URI mapping from [tool.fedacrate.metric-uris]."""
+    """Read the metric->URI mapping from [tool.flwrcrate.metric-uris].
+
+    Falls back to the legacy [tool.fedacrate.metric-uris] key so apps written
+    against earlier versions keep working.
+    """
     try:
         with open(pyproject_path, "rb") as f:
             pyproject = tomllib.load(f)
     except FileNotFoundError:
         return {}
-    return pyproject.get("tool", {}).get("fedacrate", {}).get("metric-uris", {})
+    tool = pyproject.get("tool", {})
+    return (tool.get("flwrcrate", {}).get("metric-uris")
+            or tool.get("fedacrate", {}).get("metric-uris", {}))
 
 
 def metric_to_property_value(name: str, value, uri_map: dict) -> dict:
@@ -49,7 +55,7 @@ def metric_to_property_value(name: str, value, uri_map: dict) -> dict:
     else:
         logger.warning(
             "No URI mapping for metric %r; emitting a plain PropertyValue. "
-            "Add it under [tool.fedacrate.metric-uris] in pyproject.toml for "
+            "Add it under [tool.flwrcrate.metric-uris] in pyproject.toml for "
             "semantic metadata.",
             name,
         )

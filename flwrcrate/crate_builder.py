@@ -16,7 +16,7 @@ from rocrate.model.contextentity import ContextEntity
 
 from .metrics import metric_to_property_value
 
-logger = logging.getLogger("fl_crate_generator")
+logger = logging.getLogger("flwrcrate")
 
 FL_PROFILE = (
     "https://esciencelab.org.uk/federated-learning-ro-crate-profile/"
@@ -60,8 +60,7 @@ def build_crate(captured: dict, crate_dir, metrics_log_path=None, model_path=Non
 
     crate.name = captured.get("app_name") or "Federated learning run"
     crate.description = (
-        "RO-Crate describing a federated learning run captured with "
-        "fl-crate-generator."
+        "RO-Crate describing a federated learning run captured with flwrCrate."
     )
 
     # Conformance to the FL profile (RO-Crate spec conformance is set by ro-crate-py).

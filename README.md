@@ -1,72 +1,182 @@
-# fl-crate-generator (v0.3)
+# flwrCrate
 
 Capture a [Flower](https://flower.ai/) federated learning run and emit an
-[RO-Crate](https://www.researchobject.org/ro-crate/) describing it. The run is
-modelled as a Process Run Crate-style `CreateAction`: it links to the software
-that produced it (Flower, the ML framework(s), and the aggregation strategy), to
-its configuration inputs, and to its outputs (the final model and a per-round /
-federation log file). Final metrics are attached as schema.org `PropertyValue`s.
+[RO-Crate](https://www.researchobject.org/ro-crate/) describing it — a
+machine-readable, FAIR provenance record of *who* ran *what*, with *which
+software, configuration, and data flow*, and *what came out*.
 
-This is the **v0.3** working copy. The original v0.2 library is left untouched in
-the sibling `fl_crate_generator/` folder.
+The run is modelled as a [Process Run
+Crate](https://www.researchobject.org/workflow-run-crate/profiles/process_run_crate/)-style
+`CreateAction`, following the [Federated Learning RO-Crate
+profile](https://esciencelab.org.uk/federated-learning-ro-crate-profile/federated-learning-profile.html):
+
+- **instrument** — the software that did the work: Flower, the ML framework(s)
+  (with declared *and* installed versions), and the aggregation strategy
+  (FedAvg, FedProx, …) with its hyperparameters
+- **object** — the run configuration as `PropertyValue` inputs
+- **result** — the final aggregated model and a per-round metrics / federation
+  log file
+- **agent / author / license** — provenance: a `Person` entity (ORCID used as
+  its `@id` when provided), a root license, and the agent on the action
+
+Final performance metrics are attached to the output model as schema.org
+`PropertyValue`s, optionally with semantic identifiers via a user-declared
+metric→URI mapping.
+
+## Requirements
+
+> **⚠️ flwrCrate supports Flower's message-based ServerApp API only**
+> (Flower **≥ 1.29**: `flwr.serverapp`, `@app.main()`, and
+> `strategy.start(...)` returning a `Result`).
+>
+> Apps written against the classic API (`server_fn`,
+> `ServerAppComponents`, `flwr.server.strategy`) are **not supported**.
+
+Check an app's compatibility in seconds:
+
+```bash
+grep -rn "flwr.serverapp\|strategy.start\|server_fn\|ServerAppComponents" <app>/<pkg>/server_app.py
+```
+
+- `flwr.serverapp` **and** `strategy.start` → ✅ compatible
+- `server_fn` or `ServerAppComponents` → ❌ classic API, not supported (yet)
+
+Other requirements: Python ≥ 3.9, `rocrate ≥ 0.13` (`tomli` on Python < 3.11).
 
 ## Install
 
 ```bash
-pip install -e .          # from this folder
-# requires: flwr>=1.29, rocrate>=0.13 (tomli on Python < 3.11)
+git clone https://github.com/faizollah/flwrCrate.git
+pip install -e flwrCrate
 ```
+
+Install it into the **same environment that runs your Flower app** (the one
+`flwr run` uses).
 
 ## Usage
 
-Wrap the call to `strategy.start(...)` in your `server_app.py`:
+Integration is three touchpoints in your `server_app.py`: a context manager,
+one `wrap_evaluate(...)`, and one `record_result(...)`.
+
+### Before — a stock `flwr new` PyTorch app
 
 ```python
-from fl_crate_generator import FLCrateTracker
+@app.main()
+def main(grid: Grid, context: Context) -> None:
+    ...
+    strategy = FedAvg(fraction_evaluate=fraction_evaluate)
 
-with FLCrateTracker(
-    context,
-    strategy,
-    output_dir="fl_crate_out",
-    app_name="My federated run",
-    author={"name": "Ali Faizollah", "orcid": "https://orcid.org/0000-0000-0000-0000"},
-    license="https://spdx.org/licenses/MIT.html",
-) as tracker:
     result = strategy.start(
         grid=grid,
         initial_arrays=arrays,
         train_config=ConfigRecord({"lr": lr}),
         num_rounds=num_rounds,
-        evaluate_fn=tracker.wrap_evaluate(global_evaluate),  # pass None if you have no global evaluate fn
+        evaluate_fn=global_evaluate,
     )
-    torch.save(result.arrays.to_torch_state_dict(), "final_model.pt")
-    tracker.record_result(result, model_path="final_model.pt")
-# On exit the RO-Crate is written to output_dir/ro-crate/
+
+    if context.run_config["save-model"]:
+        torch.save(result.arrays.to_torch_state_dict(), "final_model.pt")
 ```
 
-That is the whole integration: a context manager, `wrap_evaluate(...)` around your
-evaluate function, and one `record_result(...)` call.
+### After — with flwrCrate
 
-### Generalisation across project types
+```python
+from flwrcrate import FLCrateTracker
 
-Metric names are taken verbatim from your `MetricRecord`s, so the tool works for
-any analysis (image classification, weather/soil regression, …) without
-hardcoding `accuracy`/`loss`. To attach semantic identifiers, declare a mapping
-in the **app's** `pyproject.toml`:
+@app.main()
+def main(grid: Grid, context: Context) -> None:
+    ...
+    strategy = FedAvg(fraction_evaluate=fraction_evaluate)
+
+    with FLCrateTracker(
+        context, strategy,
+        output_dir="/absolute/path/to/your-app/fl_crate_out",        # absolute!
+        pyproject_path="/absolute/path/to/your-app/pyproject.toml",  # absolute!
+        app_name="My federated run",
+        author={"name": "Your Name", "orcid": "https://orcid.org/0000-0000-0000-0000"},
+        license="https://spdx.org/licenses/MIT.html",
+    ) as tracker:
+        result = strategy.start(
+            grid=grid,
+            initial_arrays=arrays,
+            train_config=ConfigRecord({"lr": lr}),
+            num_rounds=num_rounds,
+            evaluate_fn=tracker.wrap_evaluate(global_evaluate),  # or None
+        )
+        torch.save(result.arrays.to_torch_state_dict(), "final_model.pt")
+        tracker.record_result(result, model_path="final_model.pt")
+    # On clean exit the RO-Crate is written to <output_dir>/ro-crate/
+```
+
+That is the whole integration. On exit — **including on failure** — the crate
+is built; a failed run is recorded with `FailedActionStatus` and the error
+message, so partial runs are still documented.
+
+### Apps without a server-side evaluate function
+
+If your app passes no `evaluate_fn` to `strategy.start(...)` (common for
+client-side-only evaluation), skip `wrap_evaluate` entirely. Per-round metrics
+are then read from the `Result` object's client-side aggregates
+(`train_metrics_clientapp` / `evaluate_metrics_clientapp`) by
+`record_result(...)`:
+
+```python
+    with FLCrateTracker(context, strategy, ...) as tracker:
+        result = strategy.start(grid=grid, initial_arrays=arrays,
+                                train_config=..., num_rounds=...)
+        tracker.record_result(result)   # don't forget this line!
+```
+
+> **Don't forget `record_result(result)`.** Without it the crate is still
+> written, but it will contain **no performance metrics, no end time, and no
+> model** — only the static capture from the start of the run.
+
+### Why absolute paths?
+
+`flwr run` installs your app to `~/.flwr/apps/<hash>/` and executes the
+ServerApp from there (in simulation, inside a Ray worker that does not inherit
+your shell environment). Relative paths therefore resolve against the
+installed copy, not your project: a relative `output_dir` "loses" the crate in
+`~/.flwr/apps/...`, and a relative `pyproject_path` fails to find your
+config — silently dropping the framework/dependency capture. Always pass both
+as absolute paths.
+
+## Configuration
+
+### `FLCrateTracker(...)` parameters
+
+| Parameter | Required | Description |
+|---|---|---|
+| `context` | yes | The Flower `Context` (gives access to `run_config`) |
+| `strategy` | yes | Your strategy instance (FedAvg, FedProx, …) — class, module, and hyperparameters are captured |
+| `output_dir` | recommended | Where to write outputs. **Use an absolute path.** Default: `./fl_crate_out` |
+| `pyproject_path` | recommended | Path to your app's `pyproject.toml`. **Use an absolute path.** Default: `"pyproject.toml"` |
+| `app_name` | no | Human-readable name for the crate's root dataset |
+| `author` | no | `"Name"` or `{"name": ..., "orcid": ..., "affiliation": ...}` — becomes a `Person` entity (ORCID as `@id`) |
+| `license` | no | License for the crate root, e.g. an SPDX URL `"https://spdx.org/licenses/MIT.html"` |
+| `agent` | no | Who executed the run, same format as `author`. Defaults to the author |
+
+### Semantic metric identifiers
+
+Metric names are taken verbatim from your `MetricRecord`s, so any analysis
+(classification, regression, anomaly detection, …) works without hardcoded
+names. To attach semantic identifiers, declare a mapping in **your app's**
+`pyproject.toml`:
 
 ```toml
-[tool.fedacrate.metric-uris]
-rmse = "http://example.org/metric/RMSE"
+[tool.flwrcrate.metric-uris]
 accuracy = "https://schema.org/Accuracy"
+rmse     = "http://www.wikidata.org/entity/Q1374913"
 ```
 
-Metrics without a mapping still emit a plain `PropertyValue` and log a warning.
+Mapped metrics get a `propertyID`; unmapped metrics still emit a plain
+`PropertyValue` and log a warning.
 
 ## Output
 
 ```
-output_dir/
-├── captured_metadata.json   # full capture (config, frameworks, strategy, final metrics)
+<output_dir>/
+├── captured_metadata.json   # full capture: config, frameworks, strategy, timing, final metrics
 ├── metrics_log.json         # per-round metrics + federation details (referenced by the crate)
 └── ro-crate/
     ├── ro-crate-metadata.json
@@ -74,43 +184,78 @@ output_dir/
     └── metrics_log.json
 ```
 
-## What changed in v0.3
+### What's inside `ro-crate-metadata.json`
 
-- **#1** The root Dataset now `mentions` the `CreateAction`, so the run is
-  discoverable from the root instead of being an orphan entity.
-- **#2** The aggregation strategy is emitted as a `SoftwareApplication`
-  (`#fl-strategy`) with its hyperparameters as `PropertyValue`s, linked from the
-  action's `instrument`. (v0.2 captured these but dropped them from the crate.)
-- **#3** Per-round metrics **and** federation details (participant/supernode
-  counts and configuration) are written to `metrics_log.json`, which the crate
-  references as a run output. Per-client metrics remain out of scope — Flower
-  exposes only per-round aggregates.
-- **#4** `framework.py` records **every** declared dependency (minus a small
-  infrastructure deny-list), not just an allow-list, so frameworks like
-  `lightgbm`, `statsmodels`, `keras`, etc. are no longer silently dropped.
-  Recognised frameworks get a friendly name + homepage.
-- **#5** `author` / `license` / `agent` scaffolding: a `Person` entity (ORCID
-  used as its `@id` when provided), a root `license`, and `agent` on the action.
+The crate's `@graph` contains, linked together:
 
-Verified end-to-end with a real `flwr run` (Flower 1.30, CIFAR-10, FedAvg) and
-against the official `rocrate-validator` (see below).
+| Entity | Type | Content |
+|---|---|---|
+| `./` | `Dataset` | Root: name, author, license, `conformsTo` the FL profile, `mentions` the run |
+| `#fl-run` | `CreateAction` | The run: `agent`, `startTime`/`endTime`, `actionStatus`, instrument/object/result |
+| `#flower` | `SoftwareApplication` | Flower with its installed version |
+| `#framework-*` | `SoftwareApplication` | Every declared dependency (minus an infrastructure deny-list): `softwareRequirements` = the declared version spec, `softwareVersion` = the actually-installed version |
+| `#fl-strategy` | `SoftwareApplication` | The aggregation strategy with its hyperparameters as `PropertyValue`s |
+| `#param-*` | `PropertyValue` | Run configuration inputs (the action's `object`) |
+| `#metric-*` | `PropertyValue` | Final-round metrics, attached to the output model (with `propertyID` when mapped) |
+| `final_model.pt`, `metrics_log.json` | `File` | The run's outputs (the action's `result`) |
 
-## Notes / known follow-ups
+Per-round metric history and federation details (participant counts,
+federation options) live in `metrics_log.json`, which the crate references as
+a run output — keeping the metadata file lean while preserving the full time
+series.
 
-- **Profile URL is a placeholder.** `FL_PROFILE` in `crate_builder.py` points at
-  a guessed URL. Reconcile it with Eli's published Federated Learning RO-Crate
-  profile permalink before release.
-- **Flower 1.30 moved `num-supernodes`.** It now lives in `~/.flwr/config.toml`
-  (the SuperLink connection config), not in the app's `pyproject.toml`, so the
-  pyproject-based participant-count capture returns only run-config-derived
-  hints under recent Flower. Reading the participant count from the active
-  Flower config is a possible enhancement.
-- **Validator version.** `ro-crate-py` 0.15 writes RO-Crate **1.2**;
-  `rocrate-validator` 0.10 only ships a **1.1** profile, so it reports a single
-  false-positive `MUST 5.3` (`conformsTo` version). The crate validates with
-  **zero issues** when declared as 1.1, and passes all other REQUIRED checks.
-  Use a 1.2-aware validator, or pin `ro-crate-py`, for a clean report.
-- **Least user effort (Stian's point).** Integration still requires editing
-  `server_app.py`. Fully automatic capture (e.g. a Flower plugin/hook) would
-  need closer Flower integration and is left as a design question.
-```
+### Validation
+
+Crates validate against the official
+[`rocrate-validator`](https://github.com/crs4/rocrate-validator). Note:
+`ro-crate-py` ≥ 0.15 writes RO-Crate **1.2**, while `rocrate-validator` 0.10
+ships only a **1.1** profile, producing a single false-positive `MUST 5.3`
+(`conformsTo` version). All other REQUIRED checks pass.
+
+## Tested with
+
+| App | Strategy | Stack | Notes |
+|---|---|---|---|
+| `@flwrlabs/quickstart-pytorch` | FedAvg | PyTorch, TorchVision | server- and client-side metrics |
+| `@flwrlabs/quickstart-sklearn` | FedAvg | scikit-learn | no server-side evaluate fn |
+| `@chongshenng/fed-engines` | FedProx | PyTorch, HF datasets | anomaly-detection metrics (balanced accuracy, per-class recall), client-side only |
+
+## Known limitations / roadmap
+
+- **Classic API not supported.** Apps on `server_fn`/`ServerAppComponents`
+  (still common in published Flower apps) need porting to the message API
+  first. Supporting the classic API is an open design question.
+- **Participant count under recent Flower.** `num-supernodes` moved from the
+  app's `pyproject.toml` to `~/.flwr/config.toml` (the SuperLink connection
+  config), so participant-count capture from pyproject returns only
+  run-config-derived hints. Reading the active Flower config is a planned
+  enhancement.
+- **Dataset identifiers, ethics/governance lineage** are not reachable from
+  Flower and must be supplied by the user (e.g. via config) — relevant for
+  regulated domains.
+- **Per-client metadata is out of scope by design.** Flower exposes only
+  per-round aggregates, which aligns with FL's privacy premise.
+
+## Changelog
+
+- **0.4.0** — renamed to **flwrCrate** (dist/import `flwrcrate`); config key
+  is now `[tool.flwrcrate.metric-uris]` (the legacy `[tool.fedacrate.*]` key
+  is still read).
+- **0.3.0** — run discoverable from the crate root (`mentions`); aggregation
+  strategy emitted as a `SoftwareApplication` with hyperparameters; per-round
+  metrics + federation details in `metrics_log.json`; all declared
+  dependencies captured (deny-list instead of allow-list);
+  author/license/agent provenance scaffolding.
+- **0.2.0** — initial working version.
+
+## License
+
+[MIT](LICENSE)
+
+## Acknowledgements
+
+Developed within the ELIXIR **Fed-A-Crate** project (WP6) toward milestone
+M6.7, building on the [Federated Learning RO-Crate
+profile](https://esciencelab.org.uk/federated-learning-ro-crate-profile/federated-learning-profile.html)
+by the [eScienceLab](https://esciencelab.org.uk/) (The University of
+Manchester).

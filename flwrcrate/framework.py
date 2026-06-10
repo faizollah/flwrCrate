@@ -14,7 +14,7 @@ try:
 except ModuleNotFoundError:  # pragma: no cover
     import tomli as tomllib
 
-logger = logging.getLogger("fl_crate_generator")
+logger = logging.getLogger("flwrcrate")
 
 # Recognised ML / data-science frameworks: package -> (display name, homepage).
 KNOWN_FRAMEWORKS = {
@@ -42,7 +42,7 @@ KNOWN_FRAMEWORKS = {
 # (Flower itself is recorded separately, as the FL framework in tracker.py.)
 INFRA_DENYLIST = {
     "flwr", "flwr-datasets", "flwr-nightly", "ray",
-    "fl-crate-generator", "rocrate", "tomli",
+    "flwrcrate", "fl-crate-generator", "rocrate", "tomli",
     "hatchling", "setuptools", "wheel", "pip", "build",
 }
 
