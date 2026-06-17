@@ -1,5 +1,7 @@
 # flwrCrate
 
+[![tests](https://github.com/faizollah/flwrCrate/actions/workflows/tests.yml/badge.svg)](https://github.com/faizollah/flwrCrate/actions/workflows/tests.yml)
+
 Capture a [Flower](https://flower.ai/) federated learning run and emit an
 [RO-Crate](https://www.researchobject.org/ro-crate/) describing it — a
 machine-readable, FAIR provenance record of *who* ran *what*, with *which
@@ -247,6 +249,19 @@ ships only a **1.1** profile, producing a single false-positive `MUST 5.3`
   dependencies captured (deny-list instead of allow-list);
   author/license/agent provenance scaffolding.
 - **0.2.0** — initial working version.
+
+## Development
+
+```bash
+pip install -e ".[dev]"   # installs pytest
+pytest                    # run the full unit + integration suite
+```
+
+The suite is split into fast **unit** tests (dependency parsing, metric
+handling, slug/person helpers, crate assembly) and **integration** tests that
+drive the whole `FLCrateTracker` lifecycle and assert a complete, correct
+`ro-crate-metadata.json` — without needing Flower, Ray, or any ML framework
+installed. CI runs it on Python 3.10–3.12 (see the badge above).
 
 ## License
 
