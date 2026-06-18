@@ -1,0 +1,315 @@
+{
+    "@context": "https://w3id.org/ro/crate/1.2/context",
+    "@graph": [
+        {
+            "@id": "./",
+            "@type": "Dataset",
+            "author": {
+                "@id": "https://orcid.org/0009-0000-0000-0000"
+            },
+            "conformsTo": {
+                "@id": "https://esciencelab.org.uk/federated-learning-ro-crate-profile/federated-learning-profile.html"
+            },
+            "datePublished": "2026-06-10T10:25:49+00:00",
+            "description": "RO-Crate describing a federated learning run captured with flwrCrate.",
+            "hasPart": [
+                {
+                    "@id": "final_model.pt"
+                },
+                {
+                    "@id": "metrics_log.json"
+                }
+            ],
+            "license": {
+                "@id": "https://spdx.org/licenses/MIT.html"
+            },
+            "mentions": [
+                {
+                    "@id": "#fl-run"
+                }
+            ],
+            "name": "Quickstart PyTorch (demo)"
+        },
+        {
+            "@id": "ro-crate-metadata.json",
+            "@type": "CreativeWork",
+            "about": {
+                "@id": "./"
+            },
+            "conformsTo": {
+                "@id": "https://w3id.org/ro/crate/1.2"
+            }
+        },
+        {
+            "@id": "https://esciencelab.org.uk/federated-learning-ro-crate-profile/federated-learning-profile.html",
+            "@type": "CreativeWork",
+            "name": "Federated Learning RO-Crate profile v0.1"
+        },
+        {
+            "@id": "https://spdx.org/licenses/MIT.html",
+            "@type": "CreativeWork",
+            "name": "https://spdx.org/licenses/MIT.html"
+        },
+        {
+            "@id": "https://orcid.org/0009-0000-0000-0000",
+            "@type": "Person",
+            "name": "Ali Faizollah"
+        },
+        {
+            "@id": "#flower",
+            "@type": "SoftwareApplication",
+            "name": "Flower",
+            "softwareVersion": "1.30.0",
+            "url": "https://flower.ai/"
+        },
+        {
+            "@id": "#framework-torch",
+            "@type": "SoftwareApplication",
+            "name": "PyTorch",
+            "softwareRequirements": "==2.8.0",
+            "softwareVersion": "2.8.0",
+            "url": "https://pytorch.org/"
+        },
+        {
+            "@id": "#framework-torchvision",
+            "@type": "SoftwareApplication",
+            "name": "TorchVision",
+            "softwareRequirements": "==0.23.0",
+            "softwareVersion": "0.23.0",
+            "url": "https://pytorch.org/vision/"
+        },
+        {
+            "@id": "#strategy-param-arrayrecord-key",
+            "@type": "PropertyValue",
+            "name": "arrayrecord_key",
+            "value": "arrays"
+        },
+        {
+            "@id": "#strategy-param-configrecord-key",
+            "@type": "PropertyValue",
+            "name": "configrecord_key",
+            "value": "config"
+        },
+        {
+            "@id": "#strategy-param-fraction-evaluate",
+            "@type": "PropertyValue",
+            "name": "fraction_evaluate",
+            "value": 0.5
+        },
+        {
+            "@id": "#strategy-param-fraction-train",
+            "@type": "PropertyValue",
+            "name": "fraction_train",
+            "value": 1.0
+        },
+        {
+            "@id": "#strategy-param-min-available-nodes",
+            "@type": "PropertyValue",
+            "name": "min_available_nodes",
+            "value": 2
+        },
+        {
+            "@id": "#strategy-param-min-evaluate-nodes",
+            "@type": "PropertyValue",
+            "name": "min_evaluate_nodes",
+            "value": 2
+        },
+        {
+            "@id": "#strategy-param-min-train-nodes",
+            "@type": "PropertyValue",
+            "name": "min_train_nodes",
+            "value": 2
+        },
+        {
+            "@id": "#strategy-param-weighted-by-key",
+            "@type": "PropertyValue",
+            "name": "weighted_by_key",
+            "value": "num-examples"
+        },
+        {
+            "@id": "#fl-strategy",
+            "@type": "SoftwareApplication",
+            "additionalProperty": [
+                {
+                    "@id": "#strategy-param-arrayrecord-key"
+                },
+                {
+                    "@id": "#strategy-param-configrecord-key"
+                },
+                {
+                    "@id": "#strategy-param-fraction-evaluate"
+                },
+                {
+                    "@id": "#strategy-param-fraction-train"
+                },
+                {
+                    "@id": "#strategy-param-min-available-nodes"
+                },
+                {
+                    "@id": "#strategy-param-min-evaluate-nodes"
+                },
+                {
+                    "@id": "#strategy-param-min-train-nodes"
+                },
+                {
+                    "@id": "#strategy-param-weighted-by-key"
+                }
+            ],
+            "description": "Federated aggregation strategy (flwr.serverapp.strategy.fedavg).",
+            "name": "FedAvg"
+        },
+        {
+            "@id": "final_model.pt",
+            "@type": "File",
+            "additionalProperty": [
+                {
+                    "@id": "#metric-accuracy"
+                },
+                {
+                    "@id": "#metric-loss"
+                },
+                {
+                    "@id": "#metric-train-loss"
+                },
+                {
+                    "@id": "#metric-eval-loss"
+                },
+                {
+                    "@id": "#metric-eval-acc"
+                }
+            ],
+            "description": "Final global model produced by the federated learning run.",
+            "name": "Final aggregated model"
+        },
+        {
+            "@id": "metrics_log.json",
+            "@type": "File",
+            "description": "Per-round training and evaluation metrics, plus federation details (participant/supernode counts and configuration) for the whole run.",
+            "encodingFormat": "application/json",
+            "name": "Per-round metrics and federation log"
+        },
+        {
+            "@id": "#metric-accuracy",
+            "@type": "PropertyValue",
+            "name": "accuracy",
+            "propertyID": "https://schema.org/Accuracy",
+            "value": 0.2256
+        },
+        {
+            "@id": "#metric-loss",
+            "@type": "PropertyValue",
+            "name": "loss",
+            "value": 1.9886009240452247
+        },
+        {
+            "@id": "#metric-train-loss",
+            "@type": "PropertyValue",
+            "name": "train_loss",
+            "value": 2.023573088264465
+        },
+        {
+            "@id": "#metric-eval-loss",
+            "@type": "PropertyValue",
+            "name": "eval_loss",
+            "value": 1.9997069247209343
+        },
+        {
+            "@id": "#metric-eval-acc",
+            "@type": "PropertyValue",
+            "name": "eval_acc",
+            "value": 0.2259
+        },
+        {
+            "@id": "#param-num-server-rounds",
+            "@type": "PropertyValue",
+            "name": "num-server-rounds",
+            "value": 3
+        },
+        {
+            "@id": "#param-fraction-evaluate",
+            "@type": "PropertyValue",
+            "name": "fraction-evaluate",
+            "value": 0.5
+        },
+        {
+            "@id": "#param-local-epochs",
+            "@type": "PropertyValue",
+            "name": "local-epochs",
+            "value": 1
+        },
+        {
+            "@id": "#param-learning-rate",
+            "@type": "PropertyValue",
+            "name": "learning-rate",
+            "value": 0.1
+        },
+        {
+            "@id": "#param-batch-size",
+            "@type": "PropertyValue",
+            "name": "batch-size",
+            "value": 32
+        },
+        {
+            "@id": "#param-save-model",
+            "@type": "PropertyValue",
+            "name": "save-model",
+            "value": false
+        },
+        {
+            "@id": "#fl-run",
+            "@type": "CreateAction",
+            "actionStatus": {
+                "@id": "http://schema.org/CompletedActionStatus"
+            },
+            "agent": {
+                "@id": "https://orcid.org/0009-0000-0000-0000"
+            },
+            "description": "Run using strategy FedAvg (flwr.serverapp.strategy.fedavg), 3 rounds.",
+            "endTime": "2026-06-10T10:25:49.281661+00:00",
+            "instrument": [
+                {
+                    "@id": "#flower"
+                },
+                {
+                    "@id": "#framework-torch"
+                },
+                {
+                    "@id": "#framework-torchvision"
+                },
+                {
+                    "@id": "#fl-strategy"
+                }
+            ],
+            "name": "Federated learning training run",
+            "object": [
+                {
+                    "@id": "#param-num-server-rounds"
+                },
+                {
+                    "@id": "#param-fraction-evaluate"
+                },
+                {
+                    "@id": "#param-local-epochs"
+                },
+                {
+                    "@id": "#param-learning-rate"
+                },
+                {
+                    "@id": "#param-batch-size"
+                },
+                {
+                    "@id": "#param-save-model"
+                }
+            ],
+            "result": [
+                {
+                    "@id": "final_model.pt"
+                },
+                {
+                    "@id": "metrics_log.json"
+                }
+            ],
+            "startTime": "2026-06-10T10:25:00.091740+00:00"
+        }
+    ]
+}

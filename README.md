@@ -222,6 +222,12 @@ ships only a **1.1** profile, producing a single false-positive `MUST 5.3`
 | `@flwrlabs/quickstart-sklearn` | FedAvg | scikit-learn | no server-side evaluate fn |
 | `@chongshenng/fed-engines` | FedProx | PyTorch, HF datasets | anomaly-detection metrics (balanced accuracy, per-class recall), client-side only |
 
+👉 **See a real generated crate before you run anything:**
+[`examples/quickstart-pytorch/`](examples/quickstart-pytorch/) contains the
+integrated `server_app.py` and the
+[`ro-crate-metadata.json`](examples/quickstart-pytorch/ro-crate-metadata.json)
+it produced.
+
 ## Known limitations / roadmap
 
 - **Classic API not supported.** Apps on `server_fn`/`ServerAppComponents`
