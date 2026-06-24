@@ -10,5 +10,11 @@ dist/
 fl_crate_out/
 *.tmp
 
+# Test / coverage artifacts
+.coverage
+.coverage.*
+.pytest_cache/
+htmlcov/
+
 # macOS
 .DS_Store
