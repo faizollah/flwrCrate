@@ -1,0 +1,53 @@
+{
+  "app_name": "Quickstart scikit-learn (demo)",
+  "run_timing": {
+    "start_time": "2026-06-29T13:49:43.457732+00:00",
+    "end_time": "2026-06-29T13:50:05.392942+00:00"
+  },
+  "environment_config": {
+    "penalty": "l2",
+    "num-server-rounds": 25,
+    "min-available-clients": 2,
+    "save-model": false
+  },
+  "federation": {
+    "min-available-clients": 2
+  },
+  "flower": {
+    "version": "1.30.0"
+  },
+  "frameworks": [
+    {
+      "package": "scikit-learn",
+      "name": "scikit-learn",
+      "homepage": "https://scikit-learn.org/",
+      "declared": ">=1.6.1",
+      "installed_version": "1.9.0",
+      "known_framework": true
+    }
+  ],
+  "strategy": {
+    "class_name": "FedAvg",
+    "module": "flwr.serverapp.strategy.fedavg",
+    "attributes": {
+      "arrayrecord_key": "arrays",
+      "configrecord_key": "config",
+      "fraction_evaluate": 1.0,
+      "fraction_train": 1.0,
+      "min_available_nodes": 2,
+      "min_evaluate_nodes": 2,
+      "min_train_nodes": 2,
+      "weighted_by_key": "num-examples"
+    }
+  },
+  "final_metrics": {
+    "final_round": 25,
+    "metrics": {
+      "train_logloss": 0.25159209966659546,
+      "train_accuracy": 0.95,
+      "test_logloss": 0.2000950574874878,
+      "accuracy": 0.9666666666666667
+    }
+  },
+  "metrics_log_file": "metrics_log.json"
+}
