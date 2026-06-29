@@ -259,15 +259,17 @@ it produced.
 ## Development
 
 ```bash
-pip install -e ".[dev]"   # installs pytest
-pytest                    # run the full unit + integration suite
+pip install -e ".[dev]"                      # installs pytest + pytest-cov
+pytest                                        # run the full unit + integration suite
+pytest --cov=flwrcrate --cov-report=term-missing   # with a coverage report
 ```
 
 The suite is split into fast **unit** tests (dependency parsing, metric
 handling, slug/person helpers, crate assembly) and **integration** tests that
 drive the whole `FLCrateTracker` lifecycle and assert a complete, correct
 `ro-crate-metadata.json` — without needing Flower, Ray, or any ML framework
-installed. CI runs it on Python 3.10–3.12 (see the badge above).
+installed. CI runs it on Python 3.10–3.12 (see the badge above) and enforces a
+minimum coverage of 85% (currently ~92%).
 
 ## License
 
