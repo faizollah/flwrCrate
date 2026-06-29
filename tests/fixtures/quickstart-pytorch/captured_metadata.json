@@ -1,0 +1,64 @@
+{
+  "app_name": "Quickstart PyTorch (demo)",
+  "run_timing": {
+    "start_time": "2026-06-10T10:25:00.091740+00:00",
+    "end_time": "2026-06-10T10:25:49.281661+00:00"
+  },
+  "environment_config": {
+    "num-server-rounds": 3,
+    "fraction-evaluate": 0.5,
+    "local-epochs": 1,
+    "learning-rate": 0.1,
+    "batch-size": 32,
+    "save-model": false
+  },
+  "federation": {
+    "fraction-evaluate": 0.5
+  },
+  "flower": {
+    "version": "1.30.0"
+  },
+  "frameworks": [
+    {
+      "package": "torch",
+      "name": "PyTorch",
+      "homepage": "https://pytorch.org/",
+      "declared": "==2.8.0",
+      "installed_version": "2.8.0",
+      "known_framework": true
+    },
+    {
+      "package": "torchvision",
+      "name": "TorchVision",
+      "homepage": "https://pytorch.org/vision/",
+      "declared": "==0.23.0",
+      "installed_version": "0.23.0",
+      "known_framework": true
+    }
+  ],
+  "strategy": {
+    "class_name": "FedAvg",
+    "module": "flwr.serverapp.strategy.fedavg",
+    "attributes": {
+      "arrayrecord_key": "arrays",
+      "configrecord_key": "config",
+      "fraction_evaluate": 0.5,
+      "fraction_train": 1.0,
+      "min_available_nodes": 2,
+      "min_evaluate_nodes": 2,
+      "min_train_nodes": 2,
+      "weighted_by_key": "num-examples"
+    }
+  },
+  "final_metrics": {
+    "final_round": 3,
+    "metrics": {
+      "accuracy": 0.2256,
+      "loss": 1.9886009240452247,
+      "train_loss": 2.023573088264465,
+      "eval_loss": 1.9997069247209343,
+      "eval_acc": 0.2259
+    }
+  },
+  "metrics_log_file": "metrics_log.json"
+}

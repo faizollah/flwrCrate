@@ -1,0 +1,85 @@
+name: real-app e2e
+
+# Tier B integration: actually fetch a real Flower Hub app, run the federation
+# end to end, and validate the produced RO-Crate. This is heavier and more
+# network-dependent than the per-push `tests` workflow (which runs against
+# recorded fixtures), so it runs on a schedule and on demand, plus on push so it
+# can be watched per change.
+on:
+  push:
+    branches: ["**"]
+  schedule:
+    - cron: "0 3 * * *"   # nightly
+  workflow_dispatch:
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - app: quickstart-sklearn
+            handle: "@flwrlabs/quickstart-sklearn"
+            pkg: sklearnexample
+            ci_server_app: tests/e2e/sklearn_ci_server_app.py
+            strategy: FedAvg
+            framework: scikit-learn
+            python: "3.11"
+
+    name: e2e (${{ matrix.app }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+
+      - name: Install flwrcrate (with Flower)
+        run: |
+          python -m pip install --upgrade pip
+          pip install -e .
+
+      - name: Fetch the app from the Flower Hub
+        working-directory: ${{ runner.temp }}
+        run: flwr new ${{ matrix.handle }}
+
+      - name: Integrate flwrcrate and install the app
+        run: |
+          APP="${{ runner.temp }}/${{ matrix.app }}"
+          # drop in the CI-integrated ServerApp (fixed /tmp paths)
+          cp "${{ matrix.ci_server_app }}" "$APP/${{ matrix.pkg }}/server_app.py"
+          # the tracker reads pyproject from a fixed absolute path (Ray worker has no cwd)
+          cp "$APP/pyproject.toml" /tmp/flcrate_pyproject.toml
+          # add a metric-URI mapping so a metric carries a semantic propertyID
+          printf '\n[tool.flwrcrate.metric-uris]\naccuracy = "https://schema.org/Accuracy"\n' >> /tmp/flcrate_pyproject.toml
+          pip install -e "$APP"
+
+      - name: Run the federation
+        working-directory: ${{ runner.temp }}/${{ matrix.app }}
+        run: |
+          rm -rf /tmp/flcrate_out
+          # flwr run detaches the simulation when there's no TTY, so we kick it
+          # off and then poll for the crate within this same step (keeping the
+          # step alive so the background sim isn't killed).
+          flwr run . --run-config "num-server-rounds=2" || true
+          for i in $(seq 1 90); do
+            if [ -f /tmp/flcrate_out/ro-crate/ro-crate-metadata.json ]; then
+              echo "crate appeared after ~$((i*5))s"; break
+            fi
+            sleep 5
+          done
+
+      - name: Validate the generated crate
+        run: |
+          python tests/e2e/validate_crate.py \
+            /tmp/flcrate_out/ro-crate/ro-crate-metadata.json \
+            "${{ matrix.strategy }}" "${{ matrix.framework }}"
+
+      - name: Upload the crate as an artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: crate-${{ matrix.app }}
+          path: /tmp/flcrate_out/ro-crate/
+          if-no-files-found: warn

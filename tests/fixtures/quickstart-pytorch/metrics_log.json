@@ -1,0 +1,64 @@
+{
+  "federation": {
+    "fraction-evaluate": 0.5
+  },
+  "run_config": {
+    "num-server-rounds": 3,
+    "fraction-evaluate": 0.5,
+    "local-epochs": 1,
+    "learning-rate": 0.1,
+    "batch-size": 32,
+    "save-model": false
+  },
+  "per_round": {
+    "0": {
+      "server_side_evaluate": {
+        "accuracy": 0.0981,
+        "loss": 2.304996674573874
+      },
+      "captured_at": "2026-06-10T10:25:03.581969+00:00"
+    },
+    "1": {
+      "server_side_evaluate": {
+        "accuracy": 0.1542,
+        "loss": 2.2695210221447524
+      },
+      "captured_at": "2026-06-10T10:25:24.947367+00:00",
+      "train_clientapp": {
+        "train_loss": 2.135395801544189
+      },
+      "evaluate_clientapp": {
+        "eval_loss": 2.2698126469448114,
+        "eval_acc": 0.1517
+      }
+    },
+    "2": {
+      "server_side_evaluate": {
+        "accuracy": 0.1844,
+        "loss": 2.1133464589903626
+      },
+      "captured_at": "2026-06-10T10:25:36.449493+00:00",
+      "train_clientapp": {
+        "train_loss": 2.0706058508872984
+      },
+      "evaluate_clientapp": {
+        "eval_loss": 2.124029577917354,
+        "eval_acc": 0.1773
+      }
+    },
+    "3": {
+      "server_side_evaluate": {
+        "accuracy": 0.2256,
+        "loss": 1.9886009240452247
+      },
+      "captured_at": "2026-06-10T10:25:49.236087+00:00",
+      "train_clientapp": {
+        "train_loss": 2.023573088264465
+      },
+      "evaluate_clientapp": {
+        "eval_loss": 1.9997069247209343,
+        "eval_acc": 0.2259
+      }
+    }
+  }
+}

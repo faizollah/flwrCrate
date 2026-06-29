@@ -1,6 +1,7 @@
 # flwrCrate
 
-[![tests](https://github.com/faizollah/flwrCrate/actions/workflows/tests.yml/badge.svg)](https://github.com/faizollah/flwrCrate/actions/workflows/tests.yml)
+[![tests](https://github.com/eScienceLab/flwrCrate/actions/workflows/tests.yml/badge.svg)](https://github.com/eScienceLab/flwrCrate/actions/workflows/tests.yml)
+[![real-app e2e](https://github.com/eScienceLab/flwrCrate/actions/workflows/realapps.yml/badge.svg)](https://github.com/eScienceLab/flwrCrate/actions/workflows/realapps.yml)
 
 Capture a [Flower](https://flower.ai/) federated learning run and emit an
 [RO-Crate](https://www.researchobject.org/ro-crate/) describing it — a
@@ -264,12 +265,19 @@ pytest                                        # run the full unit + integration 
 pytest --cov=flwrcrate --cov-report=term-missing   # with a coverage report
 ```
 
-The suite is split into fast **unit** tests (dependency parsing, metric
-handling, slug/person helpers, crate assembly) and **integration** tests that
-drive the whole `FLCrateTracker` lifecycle and assert a complete, correct
-`ro-crate-metadata.json` — without needing Flower, Ray, or any ML framework
-installed. CI runs it on Python 3.10–3.12 (see the badge above) and enforces a
-minimum coverage of 85% (currently ~92%).
+Testing has two tiers:
+
+- **`tests` workflow (every push)** — fast **unit** tests + **integration**
+  tests that drive the whole `FLCrateTracker` lifecycle, plus **real-data tests**
+  that feed the *actual* captured output of the Tested-with apps
+  (`tests/fixtures/<app>/`) through the crate builder. None of these need
+  Flower, Ray, or an ML framework installed, so they run in seconds on Python
+  3.10–3.12 and enforce ≥85% coverage (currently ~92%).
+- **`real-app e2e` workflow (nightly + on demand)** — actually fetches a real
+  Flower Hub app with `flwr new`, runs the federation end to end, and validates
+  the produced crate (`.github/workflows/realapps.yml`). This is the only tier
+  that exercises live capture from a running Flower simulation; it's heavier and
+  network-dependent, hence separate from the per-push suite.
 
 ## License
 

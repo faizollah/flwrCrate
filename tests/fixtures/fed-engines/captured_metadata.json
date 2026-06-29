@@ -1,0 +1,91 @@
+{
+  "app_name": "Federated Engine Anomaly Detection",
+  "run_timing": {
+    "start_time": "2026-06-09T10:25:52.343680+00:00",
+    "end_time": "2026-06-09T10:26:10.660400+00:00"
+  },
+  "environment_config": {
+    "num-server-rounds": 3,
+    "num-clients": 2,
+    "fraction-train": 1.0,
+    "fraction-evaluate": 1.0,
+    "local-epochs": 1,
+    "batch-size": 32,
+    "learning-rate": 0.03,
+    "proximal-mu": 0.01,
+    "num-classes": 2,
+    "dataset-name": "luviner/industrial-faults",
+    "partitioner": "dirichlet",
+    "partition-by": "label",
+    "dirichlet-alpha": 0.3,
+    "dirichlet-min-partition-size": 10,
+    "dirichlet-self-balancing": false,
+    "val-fraction": 0.2,
+    "train-samples-per-client": 512,
+    "val-samples-per-client": 128,
+    "seed": 42
+  },
+  "federation": {
+    "num-clients": 2,
+    "fraction-train": 1.0,
+    "fraction-evaluate": 1.0,
+    "partitioner": "dirichlet",
+    "partition-by": "label",
+    "dirichlet-min-partition-size": 10,
+    "val-fraction": 0.2,
+    "train-samples-per-client": 512,
+    "val-samples-per-client": 128
+  },
+  "flower": {
+    "version": "1.30.0"
+  },
+  "frameworks": [
+    {
+      "package": "datasets",
+      "name": "Hugging Face Datasets",
+      "homepage": "https://huggingface.co/docs/datasets",
+      "declared": ">=3.1.0",
+      "installed_version": "4.8.5",
+      "known_framework": true
+    },
+    {
+      "package": "torch",
+      "name": "PyTorch",
+      "homepage": "https://pytorch.org/",
+      "declared": "==2.8.0",
+      "installed_version": "2.8.0",
+      "known_framework": true
+    }
+  ],
+  "strategy": {
+    "class_name": "FedProx",
+    "module": "flwr.serverapp.strategy.fedprox",
+    "attributes": {
+      "arrayrecord_key": "arrays",
+      "configrecord_key": "config",
+      "fraction_evaluate": 1.0,
+      "fraction_train": 1.0,
+      "min_available_nodes": 2,
+      "min_evaluate_nodes": 2,
+      "min_train_nodes": 2,
+      "proximal_mu": 0.01,
+      "weighted_by_key": "num-examples"
+    }
+  },
+  "final_metrics": {
+    "final_round": 3,
+    "metrics": {
+      "train_loss": 0.6608005687594414,
+      "train_acc": 0.712890625,
+      "train_balanced_acc": 0.5468078489943253,
+      "train_normal_recall": 0.3562555456965395,
+      "train_anomaly_recall": 0.7373601522921112,
+      "val_loss": 0.5283429622650146,
+      "val_acc": 0.78125,
+      "val_balanced_acc": 0.5343414358394574,
+      "val_normal_recall": 0.25,
+      "val_anomaly_recall": 0.8186828716789147
+    }
+  },
+  "metrics_log_file": "metrics_log.json"
+}

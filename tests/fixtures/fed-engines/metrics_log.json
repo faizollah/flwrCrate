@@ -1,0 +1,84 @@
+{
+  "federation": {
+    "num-clients": 2,
+    "fraction-train": 1.0,
+    "fraction-evaluate": 1.0,
+    "partitioner": "dirichlet",
+    "partition-by": "label",
+    "dirichlet-min-partition-size": 10,
+    "val-fraction": 0.2,
+    "train-samples-per-client": 512,
+    "val-samples-per-client": 128
+  },
+  "run_config": {
+    "num-server-rounds": 3,
+    "num-clients": 2,
+    "fraction-train": 1.0,
+    "fraction-evaluate": 1.0,
+    "local-epochs": 1,
+    "batch-size": 32,
+    "learning-rate": 0.03,
+    "proximal-mu": 0.01,
+    "num-classes": 2,
+    "dataset-name": "luviner/industrial-faults",
+    "partitioner": "dirichlet",
+    "partition-by": "label",
+    "dirichlet-alpha": 0.3,
+    "dirichlet-min-partition-size": 10,
+    "dirichlet-self-balancing": false,
+    "val-fraction": 0.2,
+    "train-samples-per-client": 512,
+    "val-samples-per-client": 128,
+    "seed": 42
+  },
+  "per_round": {
+    "1": {
+      "train_clientapp": {
+        "train_loss": 0.7037347061559558,
+        "train_acc": 0.5908203125,
+        "train_balanced_acc": 0.5055093743299932,
+        "train_normal_recall": 0.41481810115350487,
+        "train_anomaly_recall": 0.5962006475064816
+      },
+      "evaluate_clientapp": {
+        "val_loss": 0.43482594564557076,
+        "val_acc": 0.9296875,
+        "val_balanced_acc": 0.5,
+        "val_normal_recall": 0.0,
+        "val_anomaly_recall": 1.0
+      }
+    },
+    "2": {
+      "train_clientapp": {
+        "train_loss": 0.6651889113709331,
+        "train_acc": 0.8134765625,
+        "train_balanced_acc": 0.5246637139704542,
+        "train_normal_recall": 0.19520851818988466,
+        "train_anomaly_recall": 0.8541189097510236
+      },
+      "evaluate_clientapp": {
+        "val_loss": 0.6743118688464165,
+        "val_acc": 0.4609375,
+        "val_balanced_acc": 0.6145656679856792,
+        "val_normal_recall": 0.7916666666666667,
+        "val_anomaly_recall": 0.43746466930469197
+      }
+    },
+    "3": {
+      "train_clientapp": {
+        "train_loss": 0.6608005687594414,
+        "train_acc": 0.712890625,
+        "train_balanced_acc": 0.5468078489943253,
+        "train_normal_recall": 0.3562555456965395,
+        "train_anomaly_recall": 0.7373601522921112
+      },
+      "evaluate_clientapp": {
+        "val_loss": 0.5283429622650146,
+        "val_acc": 0.78125,
+        "val_balanced_acc": 0.5343414358394574,
+        "val_normal_recall": 0.25,
+        "val_anomaly_recall": 0.8186828716789147
+      }
+    }
+  }
+}
