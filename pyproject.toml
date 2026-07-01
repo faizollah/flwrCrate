@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["poetry-core>=2.0.0"]
+build-backend = "poetry.core.masonry.api"
 
 [project]
 name = "flwrcrate"
@@ -8,7 +8,7 @@ version = "0.4.0"
 description = "Capture a Flower federated learning run and emit an RO-Crate"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.9"
+requires-python = ">=3.11,<4.0"
 dependencies = [
     "flwr>=1.29.0",
     "rocrate>=0.13",
@@ -18,8 +18,13 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest>=7.0", "pytest-cov>=4.0"]
 
-[tool.hatch.build.targets.wheel]
-packages = ["flwrcrate"]
+[project.urls]
+Homepage = "https://github.com/eScienceLab/flwrCrate"
+Repository = "https://github.com/eScienceLab/flwrCrate"
+Issues = "https://github.com/eScienceLab/flwrCrate/issues"
+
+[tool.poetry]
+packages = [{ include = "flwrcrate" }]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -44,17 +44,23 @@ grep -rn "flwr.serverapp\|strategy.start\|server_fn\|ServerAppComponents" <app>/
 - `flwr.serverapp` **and** `strategy.start` → ✅ compatible
 - `server_fn` or `ServerAppComponents` → ❌ classic API, not supported (yet)
 
-Other requirements: Python ≥ 3.9, `rocrate ≥ 0.13` (`tomli` on Python < 3.11).
+Other requirements: Python ≥ 3.11, `rocrate ≥ 0.13`.
 
 ## Install
 
 ```bash
-git clone https://github.com/faizollah/flwrCrate.git
-pip install -e flwrCrate
+pip install flwrcrate
 ```
 
 Install it into the **same environment that runs your Flower app** (the one
 `flwr run` uses).
+
+To work from source instead:
+
+```bash
+git clone https://github.com/eScienceLab/flwrCrate.git
+pip install -e flwrCrate
+```
 
 ## Usage
 
@@ -272,7 +278,7 @@ Testing has two tiers:
   that feed the *actual* captured output of the Tested-with apps
   (`tests/fixtures/<app>/`) through the crate builder. None of these need
   Flower, Ray, or an ML framework installed, so they run in seconds on Python
-  3.10–3.12 and enforce ≥85% coverage (currently ~92%).
+  3.11–3.12 and enforce ≥85% coverage (currently ~92%).
 - **`real-app e2e` workflow (nightly + on demand)** — actually fetches a real
   Flower Hub app with `flwr new`, runs the federation end to end, and validates
   the produced crate (`.github/workflows/realapps.yml`). This is the only tier
